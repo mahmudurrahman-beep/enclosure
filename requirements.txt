@@ -4,3 +4,5 @@ Pillow>=10.0
 gunicorn>=22.0
 whitenoise>=6.0
 django-cors-headers>=4.0
+django-cloudinary-storage>=0.2.0
+cloudinary>=1.29.0
