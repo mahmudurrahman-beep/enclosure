@@ -33,9 +33,18 @@
             <p class="text-muted mb-3">{{ profile_user.bio }}</p>
         {% endif %}
         
-        <p>
-        <strong id="followers-count" data-followers-count>{{ profile_user.followers.count }}</strong> followers • 
-        <strong id="following-count">{{ profile_user.following.count }}</strong> following
+        <!-- Updated: Clickable followers/following counts with text included -->
+        <p class="text-center">
+            <strong id="followers-count" data-followers-count>
+                <a href="{% url 'followers_list' profile_user.username %}" class="text-dark text-decoration-none">
+                    {{ profile_user.followers.count }} followers
+                </a>
+            </strong> • 
+            <strong id="following-count">
+                <a href="{% url 'following_list' profile_user.username %}" class="text-dark text-decoration-none">
+                    {{ profile_user.following.count }} following
+                </a>
+            </strong>
         </p>
 
         <!-- Buttons Row -->

@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import User, Post, PostMedia, Follow, Notification, Message
+from .models import User, Post, PostMedia, Follow, Notification, Message, Comment
 
 # Original auth views (keep these exactly as in distribution)
 def index(request):
@@ -172,17 +172,20 @@ def toggle_vote(request, post_id):
     else:
         opposite.remove(request.user)  # Remove opposite vote if present
         field.add(request.user)
-        Notification.objects.create(
-            user=post.user,
-            actor=request.user,
-            verb="voted on your post",
-            post=post
-        )
+        # Only create notification if the voter is not the post owner
+        if request.user != post.user:
+            Notification.objects.create(
+                user=post.user,
+                actor=request.user,
+                verb="voted on your post",
+                post=post
+            )
     
     return JsonResponse({
         "up": post.thumbs_up.count(),
         "down": post.thumbs_down.count()
     })
+
 
 @login_required
 def notifications_view(request):
@@ -222,6 +225,10 @@ def messages_inbox(request):
     
     for u in users:
         other_user = User.objects.get(id=u)
+        # Skip if hidden
+        if request.user.hidden_conversations.filter(id=other_user.id).exists():
+            continue
+        
         latest = Message.objects.filter(
             (Q(sender=request.user) & Q(recipient=other_user)) |
             (Q(sender=other_user) & Q(recipient=request.user))
@@ -253,12 +260,20 @@ def conversation(request, username):
         content = request.POST.get('content', '').strip()
         if content:
             Message.objects.create(sender=request.user, recipient=other_user, content=content)
+            
+            # Unhide for YOU (sender) so you see your own message
+            request.user.hidden_conversations.remove(other_user)
+            
+            # Unhide for recipient (so conversation reappears)
+            other_user.hidden_conversations.remove(request.user)
+            # REMOVED: Notification creation for messages
         return HttpResponseRedirect(reverse('conversation', args=[username]))
     
     return render(request, "network/messages/conversation.html", {
         'other_user': other_user,
         'messages': messages
     })
+
 
 @csrf_exempt
 @login_required
@@ -283,4 +298,66 @@ def delete_post(request, post_id):
     if request.method == "POST":
         post.delete()
         return JsonResponse({"message": "Post deleted"})
+    return JsonResponse({"error": "POST required"}, status=400)  
+
+
+@csrf_exempt
+@login_required
+def delete_message(request, message_id):
+    message = get_object_or_404(Message, id=message_id, sender=request.user)  # only own messages
+    
+    if request.method == "POST":
+        message.delete()
+        return JsonResponse({"message": "Message deleted"})
+    
+    return JsonResponse({"error": "POST required"}, status=400) 
+
+@login_required
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == "POST":
+        content = request.POST.get('content', '').strip()
+        if content:
+            Comment.objects.create(user=request.user, post=post, content=content)
+            # Optional notification
+            if request.user != post.user:
+                Notification.objects.create(
+                    user=post.user,
+                    actor=request.user,
+                    verb="commented on your post",
+                    post=post
+                )
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
+    return HttpResponseRedirect('/')
+
+@csrf_exempt
+@login_required
+def delete_conversation(request, username):
+    other_user = get_object_or_404(User, username=username)
+    if request.method == "POST":
+        # Hide the conversation for you (add to hidden_conversations)
+        request.user.hidden_conversations.add(other_user)
+        return JsonResponse({"message": "Conversation hidden"})
     return JsonResponse({"error": "POST required"}, status=400)
+
+@login_required
+def followers_list(request, username):
+    profile_user = get_object_or_404(User, username=username)
+    # Get actual User objects who follow profile_user
+    followers = User.objects.filter(following__followed=profile_user)
+    return render(request, "network/followers_list.html", {
+        'profile_user': profile_user,
+        'users': followers,
+        'list_type': 'Followers'
+    })
+
+@login_required
+def following_list(request, username):
+    profile_user = get_object_or_404(User, username=username)
+    # Get actual User objects profile_user follows
+    following = User.objects.filter(followers__follower=profile_user)
+    return render(request, "network/followers_list.html", {
+        'profile_user': profile_user,
+        'users': following,
+        'list_type': 'Following'
+    })

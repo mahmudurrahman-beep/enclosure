@@ -18,7 +18,7 @@
             </div>
         </div>
 
-        <!-- FIXED: Content – single clean .post-text with linebreaks -->
+        <!-- Content -->
         <div class="post-content mb-3" data-post-id="{{ post.id }}">
             <p class="post-text mb-0">{{ post.content|linebreaksbr }}</p>
         </div>
@@ -62,6 +62,43 @@
                     Delete
                 </button>
             {% endif %}
+        </div>
+
+        <!-- Comments Section -->
+        <div class="comments-section mt-4">
+            <h6>Comments ({{ post.comments.count }})</h6>
+
+            <!-- Comment Form -->
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'add_comment' post.id %}" class="mb-3">
+                    {% csrf_token %}
+                    <textarea name="content" class="form-control" rows="2" placeholder="Write a comment..." required></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm mt-2">Comment</button>
+                </form>
+            {% endif %}
+
+            <!-- List Comments -->
+            {% for comment in post.comments.all %}
+                <div class="d-flex mb-2 align-items-start">
+                    <!-- Commenter avatar + clickable username -->
+                    {% if comment.user.profile_picture %}
+                        <img src="{{ comment.user.profile_picture.url }}" class="rounded-circle me-2" width="32" height="32" alt="{{ comment.user.username }}" style="object-fit: cover;">
+                    {% else %}
+                        <img src="/static/network/default-avatar.png" class="rounded-circle me-2" width="32" height="32" alt="{{ comment.user.username }}" style="object-fit: cover;">
+                    {% endif %}
+                    <div>
+                        <strong>
+                            <a href="{% url 'profile' comment.user.username %}" class="text-dark text-decoration-none">
+                                {{ comment.user.username }}
+                            </a>
+                        </strong>
+                        <small class="text-muted ms-2">
+                            {{ comment.timestamp|date:"M d, Y • g:i A" }}
+                        </small>
+                        <p class="mb-1">{{ comment.content|linebreaks }}</p>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
     </div>
 {% empty %}

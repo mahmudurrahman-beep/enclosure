@@ -302,3 +302,64 @@ document.querySelectorAll('.delete-post').forEach(btn => {
         });
     });
 });
+
+// Delete Message
+document.querySelectorAll('.delete-message').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (!confirm('Delete this message?')) return;
+
+        const messageId = btn.dataset.messageId;
+        const messageItem = btn.closest('.message-item');
+
+        fetch(`/delete-message/${messageId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.message) {
+                messageItem.remove(); // instant removal
+            }
+        })
+        .catch(err => console.error('Delete message failed:', err));
+    });
+});
+
+// Hide/Delete Conversation – "Delete for me only"
+document.querySelectorAll('.delete-conversation').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (!confirm('Clear this conversation for you? (The other user will still see their messages)')) {
+            return;
+        }
+
+        const username = btn.dataset.other;
+        const csrfToken = getCsrfToken();
+
+        // Optional: show loading state
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = 'Clearing...';
+
+        fetch(`/delete-conversation/${username}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network error');
+            return response.json();
+        })
+        .then(data => {
+            alert(data.message || 'Conversation cleared for you!');
+            window.location.href = '/messages/';  // go back to inbox
+        })
+        .catch(error => {
+            console.error('Clear conversation failed:', error);
+            alert('Failed to clear conversation.');
+            btn.disabled = false;
+            btn.textContent = originalText;
+        });
+    });
+});

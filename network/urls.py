@@ -23,6 +23,11 @@ urlpatterns = [
     path("quick-upload-picture/", views.quick_upload_picture, name="quick_upload_picture"),
     path("discover/", views.discover_users, name="discover_users"),
     path("delete-post/<int:post_id>/", views.delete_post, name="delete_post"),
+    path("delete-message/<int:message_id>/", views.delete_message, name="delete_message"),
+    path("add-comment/<int:post_id>/", views.add_comment, name="add_comment"),
+    path("delete-conversation/<str:username>/", views.delete_conversation, name="delete_conversation"),
+    path("followers/<str:username>/", views.followers_list, name="followers_list"),
+    path("following/<str:username>/", views.following_list, name="following_list"),
 ]
 
 if settings.DEBUG:

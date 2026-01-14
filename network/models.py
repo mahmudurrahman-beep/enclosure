@@ -3,11 +3,10 @@ from django.db import models
 
 class User(AbstractUser):
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
-    bio = models.TextField(max_length=500, blank=True)  # Optional add-on
+    bio = models.TextField(max_length=500, blank=True)
+    hidden_conversations = models.ManyToManyField('self', symmetrical=False, blank=True, related_name='hidden_by')  # this line
 
-    def __str__(self):
-        return self.username
-
+    
 class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
     content = models.TextField()
@@ -56,4 +55,13 @@ class Message(models.Model):
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f"{self.sender} to {self.recipient}: {self.content[:30]}"
+        return f"{self.sender} to {self.recipient}: {self.content[:30]}" 
+    
+class Comment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
